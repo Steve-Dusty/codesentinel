@@ -12,7 +12,7 @@ from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.util import ClassNotFound
 import asyncio
 
-# LangChain Imports
+
 from langchain_community.document_loaders.generic import GenericLoader
 from langchain_community.document_loaders.parsers import LanguageParser
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
@@ -23,16 +23,16 @@ from langgraph.checkpoint.memory import MemorySaver
 
 app = FastAPI(title="CodeSentinel API", version="1.0.0")
 
-# Enable CORS for frontend
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"], # Your frontend URL
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# WebSocket connection manager
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -49,7 +49,7 @@ class ConnectionManager:
         if websocket:
             await websocket.send_text(json.dumps(message))
         else:
-            # Broadcast to all connections
+
             dead_connections = []
             for connection in self.active_connections:
                 try:
@@ -57,29 +57,29 @@ class ConnectionManager:
                     print(f"✅ Message sent successfully to connection")
                 except Exception as e:
                     print(f"❌ Failed to send message: {e}")
-                    # Mark dead connections for removal
+
                     dead_connections.append(connection)
             
-            # Remove dead connections
+
             for dead_conn in dead_connections:
                 if dead_conn in self.active_connections:
                     self.active_connections.remove(dead_conn)
 
 manager = ConnectionManager()
 
-# --- AI ANALYSIS SETUP ---
+
 load_dotenv()
 os.getenv("GOOGLE_API_KEY")
 model = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.0, max_retries=0)
 memory = MemorySaver()
 
-# --- DEFINE THE STATE ---
+
 class GraphState(TypedDict):
     messages: List[BaseMessage]
     current_chunk_index: int
     code_chunks: List[str]
 
-# --- DEFINE ALL THREE AGENT PROMPTS ---
+
 investigator_prompt = ChatPromptTemplate.from_messages([
     ("system",
      """You are an expert security code reviewer named "Investigator". Your goal is to find security flaws in the code through detailed analysis and questioning.
@@ -166,7 +166,7 @@ If no issues were found, the `vulnerabilities` array should be empty, overall_cv
 """
 )
 
-# Create runnable chains
+
 investigator_runnable = investigator_prompt | model
 interrogator_runnable = interrogator_prompt | model
 analyst_runnable = analyst_prompt | model
@@ -175,14 +175,14 @@ class CodeRequest(BaseModel):
     code: str
     language: Optional[str] = None
 
-# WebSocket endpoint
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     print("🔌 New WebSocket connection attempt")
     await manager.connect(websocket)
     print(f"✅ WebSocket connected! Total connections: {len(manager.active_connections)}")
     
-    # Send a welcome message to confirm connection
+
     await manager.send_message({
         "type": "connection_established",
         "message": "WebSocket connection established successfully",
@@ -191,13 +191,13 @@ async def websocket_endpoint(websocket: WebSocket):
     
     try:
         while True:
-            # Keep connection alive with timeout
+
             try:
-                # Wait for any message from client with a timeout
+
                 data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
                 print(f"📨 Received from client: {data}")
                 
-                # Handle heartbeat messages
+
                 try:
                     import json
                     message = json.loads(data)
@@ -205,10 +205,10 @@ async def websocket_endpoint(websocket: WebSocket):
                         print("💓 Received heartbeat from client")
                         continue
                 except (json.JSONDecodeError, KeyError):
-                    pass  # Not a JSON message, ignore
+                    pass
                     
             except asyncio.TimeoutError:
-                # Send ping to keep connection alive
+
                 try:
                     await websocket.ping()
                     print("🏓 Sent ping to keep connection alive")
@@ -230,7 +230,7 @@ async def run_ai_analysis(file_path: str):
     """Run AI analysis on the specified file path - integrated from snippet.py"""
     print(f"📁 Loading and splitting: {file_path}")
     
-    # Send analysis started message
+
     print(f"🔗 Sending analysis_started message to {len(manager.active_connections)} connections")
     await manager.send_message({
         "type": "analysis_started",
@@ -239,7 +239,7 @@ async def run_ai_analysis(file_path: str):
     })
     print(f"✅ analysis_started message sent successfully")
     
-    # Load and split the code from the specified file
+
     loader = GenericLoader.from_filesystem(
         path=file_path,
         parser=LanguageParser(parser_threshold=10)
@@ -248,7 +248,7 @@ async def run_ai_analysis(file_path: str):
     code_chunks = [doc.page_content for doc in documents]
     print(f"--- Codebase split into {len(code_chunks)} chunks. ---")
     
-    # Send chunk info
+
     await manager.send_message({
         "type": "chunks_loaded",
         "message": f"Code split into {len(code_chunks)} chunks for analysis",
@@ -256,7 +256,7 @@ async def run_ai_analysis(file_path: str):
         "timestamp": asyncio.get_event_loop().time()
     })
     
-    # Define the nodes (synchronous for LangGraph compatibility)
+
     def interrogator_node(state: GraphState):
         print("--- Calling Interrogator ---")
         current_idx = state['current_chunk_index']
@@ -287,14 +287,14 @@ This is chunk {current_idx + 1} of {len(state['code_chunks'])} in the codebase. 
         print("--- Calling Investigator ---")
         response = investigator_runnable.invoke({"messages": state['messages']})
         
-        # Add the Investigator prefix to the response
+
         investigator_message = AIMessage(content=f"**Investigator**: {response.content}")
         return {"messages": [investigator_message]}
 
     def update_index_node(state: GraphState):
-        print("\n##################################################")
+
         print("CHUNK COMPLETE, MOVING TO NEXT CHUNK")
-        print("##################################################\n")
+
         current_idx = state['current_chunk_index']
         return {"current_chunk_index": current_idx + 1, "messages": []}
 

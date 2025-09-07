@@ -22,21 +22,21 @@ export default function ConversationPage() {
   const { messages, addMessage, setMessages } = useConversation()
 
   useEffect(() => {
-    // Connect to WebSocket
+    
     const websocket = new WebSocket('ws://localhost:8000/ws')
     
     websocket.onopen = () => {
       console.log('WebSocket connected')
       setWs(websocket)
       
-      // Get code from sessionStorage and send to backend
+      
       const codeToAnalyze = sessionStorage.getItem('codeToAnalyze')
       if (codeToAnalyze) {
         console.log("TESTESTSETSST")
-        // Clear the stored code
+        
         sessionStorage.removeItem('codeToAnalyze')
         
-        // Send code to backend for analysis
+        
         fetch('http://localhost:8000/api/analyze', {
           method: 'POST',
           headers: {
@@ -55,7 +55,7 @@ export default function ConversationPage() {
         })
       }
       
-      // Send periodic heartbeat to keep connection alive
+      
       const heartbeat = setInterval(() => {
         if (websocket.readyState === WebSocket.OPEN) {
           websocket.send(JSON.stringify({ type: 'heartbeat', timestamp: Date.now() }))
@@ -70,7 +70,7 @@ export default function ConversationPage() {
       const data = JSON.parse(event.data)
       console.log('Received WebSocket message:', data)
       
-      // Handle different message types
+      
       if (data.type === 'connection_established') {
         console.log('✅ WebSocket connection confirmed:', data.message)
         return
@@ -79,12 +79,12 @@ export default function ConversationPage() {
       if (data.type === 'analysis_started' || 
           data.type === 'chunks_loaded' || 
           data.type === 'chunk_complete') {
-        // System messages - don't show in conversation
+        
         console.log('System message:', data.message)
         return
       }
       
-      // Convert WebSocket message to our Message format and add to context
+      
       const messageRole = data.type === 'interrogator_message' ? 'interrogator' : 
                          data.type === 'investigator_message' ? 'investigator' :
                          data.type === 'referee_message' ? 'referee' : 'system'
@@ -95,20 +95,20 @@ export default function ConversationPage() {
         content: data.message
       })
       
-      // Auto-scroll to bottom when new message arrives
+      
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
       }, 100)
       
-      // Check if analysis is complete or errored
+      
       if (data.type === 'analysis_complete') {
         console.log('Analysis complete, redirecting to report...')
         
-        // Store analysis result and conversation log as backup
+        
         if (data.report) {
           sessionStorage.setItem('analysisResult', JSON.stringify(data.report))
         }
-        // Store conversation log to sessionStorage as backup for report page
+        
         sessionStorage.setItem('conversationLog', JSON.stringify(messages))
         
         setIsComplete(true)
@@ -118,13 +118,13 @@ export default function ConversationPage() {
       } else if (data.type === 'analysis_error') {
         console.error('Analysis failed:', data.message)
         
-        // Add error message to conversation
+        
         addMessage({
           role: 'system',
           content: `Analysis failed: ${data.message}`
         })
         
-        // Still redirect to report page after delay
+        
         setIsComplete(true)
         setTimeout(() => {
           window.location.href = "/report"
@@ -190,7 +190,7 @@ export default function ConversationPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center space-x-3">
@@ -205,10 +205,10 @@ export default function ConversationPage() {
         </div>
       </header>
 
-      {/* Main Content */}
+      
       <main className="container mx-auto px-6 py-8">
         <div className="max-w-4xl mx-auto space-y-8">
-          {/* Loading Indicator */}
+          
           <div className="text-center space-y-4">
             <div className="flex justify-center">
               {isComplete ? (
@@ -224,7 +224,7 @@ export default function ConversationPage() {
             </div>
           </div>
 
-          {/* AI Agent Discussion */}
+          
           <Card className="border-border">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -250,7 +250,7 @@ export default function ConversationPage() {
                     <div className="text-sm leading-relaxed whitespace-pre-wrap">
                       {message.content.split('```').map((part, index) => {
                         if (index % 2 === 1) {
-                          // This is a code block
+                          
                           const [language, ...codeLines] = part.split('\n')
                           const code = codeLines.join('\n')
                           return (
@@ -272,7 +272,7 @@ export default function ConversationPage() {
                   </div>
                 )}
                 
-                {/* Auto-scroll target */}
+                
                 <div ref={messagesEndRef} />
               </div>
             </CardContent>

@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 import { useConversation } from "../contexts/ConversationContext"
 
-// Interface for analysis data (matches final_report.json structure)
+
 interface AnalysisData {
   summary: {
     overall_cvss_score: number
@@ -66,14 +66,14 @@ export default function ReportPage() {
   const [conversationLog, setConversationLog] = useState<ConversationMessage[]>([])
 
   useEffect(() => {
-    // Get analysis data from final_report.json via API (like snippet.py does)
+
     fetch('http://localhost:8000/api/report')
       .then(response => response.json())
       .then(data => {
         setAnalysisData(data)
         console.log('Loaded analysis data from final_report.json:', data)
         
-        // Create history entry from current analysis
+
         const historyEntry = {
           id: `analysis_${Date.now()}`,
           date: new Date().toLocaleString(),
@@ -84,14 +84,14 @@ export default function ReportPage() {
       })
       .catch(error => {
         console.error('Failed to load final_report.json:', error)
-        // Fallback to sessionStorage if file doesn't exist
+
         const storedAnalysis = sessionStorage.getItem('analysisResult')
         if (storedAnalysis) {
           try {
             const data = JSON.parse(storedAnalysis)
             setAnalysisData(data)
             
-            // Create history entry from stored analysis
+
             const historyEntry = {
               id: `analysis_${Date.now()}`,
               date: new Date().toLocaleString(),
@@ -105,13 +105,13 @@ export default function ReportPage() {
         }
       })
     
-    // Get conversation log from context or sessionStorage fallback
+
     console.log('Context messages:', contextMessages)
     if (contextMessages && contextMessages.length > 0) {
       console.log('Using context messages for conversation log')
       setConversationLog(contextMessages)
     } else {
-      // Fallback to sessionStorage if context is empty
+
       console.log('Context empty, checking sessionStorage for conversation log')
       const storedConversation = sessionStorage.getItem('conversationLog')
       if (storedConversation) {
@@ -128,7 +128,7 @@ export default function ReportPage() {
     }
   }, [contextMessages])
 
-  // Generate data from analysis results
+
   const severityData = analysisData ? [
     { name: "Critical", value: analysisData.vulnerabilities.filter(v => v.severity === "Critical").length, color: "#dc2626" },
     { name: "High", value: analysisData.vulnerabilities.filter(v => v.severity === "High").length, color: "#ea580c" },
@@ -150,8 +150,8 @@ export default function ReportPage() {
   ] : []
 
   const findings = analysisData ? analysisData.vulnerabilities.map((vuln, index) => {
-    // Generate realistic line numbers for vulnerabilities
-    // First vulnerability starts around line 10, then increment by 8-12 lines for each subsequent vulnerability
+
+
     const baseLine = 10
     const lineIncrement = 8 + (index * 2) // Varying increments to look more realistic
     const lineNumber = baseLine + (index * lineIncrement)
